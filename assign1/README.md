@@ -1,7 +1,8 @@
-Brandon Barber
+#Assignment 1: Terrain Mapping#
 
 ##Compilation:##
-```make```
+`make`
+
 The compiled `pic` library must be one directory level above this. For instance, if your directory path for this is `Code/assign1`, then you must have it in `Code/pic`.
 
 ##Running##
