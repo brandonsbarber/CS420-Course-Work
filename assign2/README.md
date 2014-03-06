@@ -1,7 +1,8 @@
-Brandon Barber
+#Assignment 2: Roller Coaster#
 
 ##Compilation:##
-```make```
+`make`
+
 The compiled `pic` library must be one directory level above this. For instance, if your directory path for this is `Code/assign2`, then you must have it in `Code/pic`.
 
 ##Running##
