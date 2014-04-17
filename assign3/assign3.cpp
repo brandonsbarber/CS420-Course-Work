@@ -155,6 +155,7 @@ void draw_scene()
 
             float t = 0;
 
+            //Iterate through triangles
             for(int triangleIndex = 0; triangleIndex < num_triangles; triangleIndex++)
             {
                 Triangle triangle = triangles[triangleIndex];
@@ -192,6 +193,7 @@ void draw_scene()
                 }
             }
 
+            //Iterate through spheres
             for(int sphereIndex = 0;sphereIndex < num_spheres; sphereIndex++)
             {
                 Sphere sphere = spheres[sphereIndex];
