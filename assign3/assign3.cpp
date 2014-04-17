@@ -36,35 +36,37 @@ int mode=MODE_DISPLAY;
 //the field of view of the camera
 #define fov 60.0
 
+#define null 0
+
 unsigned char buffer[HEIGHT][WIDTH][3];
 
 struct Vertex
 {
-  double position[3];
-  double color_diffuse[3];
-  double color_specular[3];
-  double normal[3];
-  double shininess;
+	double position[3];
+	double color_diffuse[3];
+	double color_specular[3];
+	double normal[3];
+	double shininess;
 };
 
 typedef struct _Triangle
 {
-  struct Vertex v[3];
+	struct Vertex v[3];
 } Triangle;
 
 typedef struct _Sphere
 {
-  double position[3];
-  double color_diffuse[3];
-  double color_specular[3];
-  double shininess;
-  double radius;
+	double position[3];
+	double color_diffuse[3];
+	double color_specular[3];
+	double shininess;
+	double radius;
 } Sphere;
 
 typedef struct _Light
 {
-  double position[3];
-  double color[3];
+	double position[3];
+	double color[3];
 } Light;
 
 Triangle triangles[MAX_TRIANGLES];
@@ -82,345 +84,369 @@ void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
 Vertex subtract(Vertex v1, Vertex v2)
 {
-    Vertex toReturn;
-    for(int i = 0; i <= 2; i++)
-    {
-        toReturn.position[i] = v1.position[i] - v2.position[i];
-    }
-    return toReturn;
+		Vertex toReturn;
+		for(int i = 0; i <= 2; i++)
+		{
+				toReturn.position[i] = v1.position[i] - v2.position[i];
+		}
+		return toReturn;
 }
 
 Vertex cross(Vertex v1, Vertex v2)
 {
-    Vertex toReturn;
-    toReturn.position[0] = v1.position[1] * v2.position[2] - v1.position[2] * v2.position[1];
-    toReturn.position[1] = v1.position[2] * v2.position[0] - v1.position[0] * v2.position[2];
-    toReturn.position[2] = v1.position[0] * v2.position[1] - v1.position[1] * v2.position[0];
+		Vertex toReturn;
+		toReturn.position[0] = v1.position[1] * v2.position[2] - v1.position[2] * v2.position[1];
+		toReturn.position[1] = v1.position[2] * v2.position[0] - v1.position[0] * v2.position[2];
+		toReturn.position[2] = v1.position[0] * v2.position[1] - v1.position[1] * v2.position[0];
 
-    return toReturn;
+		return toReturn;
 }
 
 double dot(Vertex v1, Vertex v2)
 {
-    return v1.position[0] * v2.position[0] + v1.position[1] * v2.position[1] + v1.position[2] * v2.position[2];
+		return v1.position[0] * v2.position[0] + v1.position[1] * v2.position[1] + v1.position[2] * v2.position[2];
 }
 
 Vertex scale(Vertex v, double scaleFactor)
 {
-    Vertex toReturn;
-    toReturn.position[0] *= scaleFactor;
-    toReturn.position[1] *= scaleFactor;
-    toReturn.position[2] *= scaleFactor;
-    return toReturn;
+		Vertex toReturn;
+		toReturn.position[0] *= scaleFactor;
+		toReturn.position[1] *= scaleFactor;
+		toReturn.position[2] *= scaleFactor;
+		return toReturn;
 }
 
 double magnitude(Vertex v)
 {
-    return sqrt(v.position[0]*v.position[0] + v.position[1]*v.position[1] + v.position[2]*v.position[2]); 
+		return sqrt(v.position[0]*v.position[0] + v.position[1]*v.position[1] + v.position[2]*v.position[2]); 
 }
 
 Vertex normalize(Vertex v)
 {
-    Vertex toReturn;
+		Vertex toReturn;
 
-    double mag = magnitude(v);
+		double mag = magnitude(v);
 
-    toReturn.position[0] = v.position[0] / mag;
-    toReturn.position[1] = v.position[1] / mag;
-    toReturn.position[2] = v.position[2] / mag;
+		toReturn.position[0] = v.position[0] / mag;
+		toReturn.position[1] = v.position[1] / mag;
+		toReturn.position[2] = v.position[2] / mag;
 
-    return toReturn;
+		return toReturn;
 }
 
 //MODIFY THIS FUNCTION
 void draw_scene()
 {
-    //generate rays
-    float ar = 1.0f*WIDTH/HEIGHT;
+		//generate rays
+		float ar = 1.0f*WIDTH/HEIGHT;
 
-    float tanVal = tan(fov/2.0 * PI / 180.0);
+		float tanVal = tan(fov/2.0 * PI / 180.0);
 
-    for(int x = 0; x < WIDTH; x++)
-    {
-        for(int y = 0; y < HEIGHT; y++)
-        {
-            float rayX = 2 * ar * tanVal * x / (1.0*WIDTH - 1) - ar * tanVal;
-            float rayY = 2 * tanVal * y / (1.0*HEIGHT - 1) - tanVal;
-            float rayZ = -1;
-            float d = sqrt(rayX * rayX + rayY * rayY + rayZ * rayZ);
+		for(int x = 0; x < WIDTH; x++)
+		{
+				for(int y = 0; y < HEIGHT; y++)
+				{
+						float rayX = 2 * ar * tanVal * x / (1.0*WIDTH - 1) - ar * tanVal;
+						float rayY = 2 * tanVal * y / (1.0*HEIGHT - 1) - tanVal;
+						float rayZ = -1;
+						float d = sqrt(rayX * rayX + rayY * rayY + rayZ * rayZ);
 
-            rayX /= d;
-            rayY /= d;
-            rayZ /= d;
+						rayX /= d;
+						rayY /= d;
+						rayZ /= d;
 
-            float t = 0;
+						float t = 0;
 
-            //Iterate through triangles
-            for(int triangleIndex = 0; triangleIndex < num_triangles; triangleIndex++)
-            {
-                Triangle triangle = triangles[triangleIndex];
+						Triangle* foundTriangle = null;
+						Sphere* foundSphere = null;
 
-                Vertex planeNormal = cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0]));
-                planeNormal = normalize(planeNormal);
+						//Iterate through triangles
+						for(int triangleIndex = 0; triangleIndex < num_triangles; triangleIndex++)
+						{
+								Triangle triangle = triangles[triangleIndex];
 
-                Vertex zeroVector;
-                zeroVector.position[0] = 0;
-                zeroVector.position[1] = 0;
-                zeroVector.position[2] = 0;
+								Vertex planeNormal = cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0]));
+								planeNormal = normalize(planeNormal);
 
-                Vertex rayVector;
-                rayVector.position[0] = rayX;
-                rayVector.position[1] = rayY;
-                rayVector.position[2] = rayZ;
+								Vertex zeroVector;
+								zeroVector.position[0] = 0;
+								zeroVector.position[1] = 0;
+								zeroVector.position[2] = 0;
 
-                double t_Triangle = -1 * dot(subtract(zeroVector,triangle.v[0]),planeNormal) / dot(rayVector, planeNormal);
+								Vertex rayVector;
+								rayVector.position[0] = rayX;
+								rayVector.position[1] = rayY;
+								rayVector.position[2] = rayZ;
 
-                if(t_Triangle <= 0)
-                {
-                    continue;
-                }
+								double t_Triangle = -1 * dot(subtract(zeroVector,triangle.v[0]),planeNormal) / dot(rayVector, planeNormal);
 
-                rayVector = scale(rayVector,t_Triangle);
+								if(t_Triangle <= 0)
+								{
+										continue;
+								}
 
-                double area = .5 * magnitude(cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0])));
-                double alpha = magnitude(cross(subtract(triangle.v[1],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
-                double beta = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
-                double gamma = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[1],rayVector))) * .5 / area;
+								rayVector = scale(rayVector,t_Triangle);
 
-                if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1)
-                {
-                    t = t_Triangle;
-                }
-            }
+								double area = .5 * magnitude(cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0])));
+								double alpha = magnitude(cross(subtract(triangle.v[1],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
+								double beta = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
+								double gamma = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[1],rayVector))) * .5 / area;
 
-            //Iterate through spheres
-            for(int sphereIndex = 0;sphereIndex < num_spheres; sphereIndex++)
-            {
-                Sphere sphere = spheres[sphereIndex];
-                float a = 1;
-                float b = 2 * (rayX * (-sphere.position[0]) + rayY * (-sphere.position[1]) + rayZ * (-sphere.position[2]));
-                float c = sphere.position[0]*sphere.position[0] + sphere.position[1]*sphere.position[1] + sphere.position[2]*sphere.position[2] - sphere.radius * sphere.radius;
+								if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1)
+								{
+										t = t_Triangle;
+										foundTriangle = &triangle;
+								}
+						}
 
-                float discriminant = b * b - 4 * a * c;
+						//Iterate through spheres
+						for(int sphereIndex = 0;sphereIndex < num_spheres; sphereIndex++)
+						{
+								Sphere sphere = spheres[sphereIndex];
+								float a = 1;
+								float b = 2 * (rayX * (-sphere.position[0]) + rayY * (-sphere.position[1]) + rayZ * (-sphere.position[2]));
+								float c = sphere.position[0]*sphere.position[0] + sphere.position[1]*sphere.position[1] + sphere.position[2]*sphere.position[2] - sphere.radius * sphere.radius;
 
-                if(discriminant < 0)
-                {
-                    continue;
-                }
-                float t_0 = (-b + sqrt(discriminant))/2;
-                float t_1 = (-b - sqrt(discriminant))/2;
+								float discriminant = b * b - 4 * a * c;
 
-                float sphere_t = 0;
+								if(discriminant < 0)
+								{
+										continue;
+								}
+								float t_0 = (-b + sqrt(discriminant))/2;
+								float t_1 = (-b - sqrt(discriminant))/2;
 
-                if(t_0 > 0 && t_1 > 0)
-                {
-                    sphere_t = min(t_0,t_1);
-                }
-                else if(t_0 > 0)
-                {
-                    sphere_t = t_0;
-                }
-                else if(t_1 > 0)
-                {
-                    sphere_t = t_1;
-                }
-                else
-                {
-                    continue;
-                }
+								float sphere_t = 0;
 
-                if(sphere_t > 0)
-                {
-                    if(t > 0)
-                    {
-                        t = min(sphere_t,t);
-                    }
-                    else
-                    {
-                        t = sphere_t;
-                    }
-                }
-            } 
+								if(t_0 > 0 && t_1 > 0)
+								{
+										sphere_t = min(t_0,t_1);
+								}
+								else if(t_0 > 0)
+								{
+										sphere_t = t_0;
+								}
+								else if(t_1 > 0)
+								{
+										sphere_t = t_1;
+								}
+								else
+								{
+										continue;
+								}
 
-            if(t > 0)
-            {
+								if(sphere_t > 0)
+								{
+										if(t > 0)
+										{
+												t = min(sphere_t,t);
+										}
+										else
+										{
+												t = sphere_t;
+										}
+										foundSphere = &sphere;
+								}
+						} 
 
+						if(t > 0)
+						{
+								Vertex rayLocation;
+								rayLocation.position[0] = rayX * t;
+								rayLocation.position[1] = rayY * t;
+								rayLocation.position[2] = rayZ * t;
 
-                glPointSize(2.0);  
-                glBegin(GL_POINTS);
-                plot_pixel(x,y,255,255,255);
-                glEnd();
-                glFlush();
-            }
-            else
-            {
-                glPointSize(2.0);  
-                glBegin(GL_POINTS);
-                plot_pixel(x,y,0,0,0);
-                glEnd();
-                glFlush();
-            }
+								//Cast shadow rays
+								for(int lightIndex = 0; lightIndex < num_lights; lightIndex++)
+								{
+									Light light = lights[lightIndex];
+								}
 
-        }
-    }
-    printf("Done!\n"); fflush(stdout);
+								glPointSize(2.0);  
+								glBegin(GL_POINTS);
+								
+								if(foundSphere != null)
+								{
+									plot_pixel(x,y,0,0,255);
+								}
+								else if(foundTriangle != null)
+								{
+									plot_pixel(x,y,255,0,0);
+								}
+
+								
+								
+								glEnd();
+								glFlush();
+						}
+						else
+						{
+								glPointSize(2.0);  
+								glBegin(GL_POINTS);
+								plot_pixel(x,y,255,255,255);
+								glEnd();
+								glFlush();
+						}
+				}	//end y
+		}	//end x
+		printf("Done!\n"); fflush(stdout);
 }
 
 void plot_pixel_display(int x,int y,unsigned char r,unsigned char g,unsigned char b)
 {
-  glColor3f(((double)r)/256.f,((double)g)/256.f,((double)b)/256.f);
-  glVertex2i(x,y);
+	glColor3f(((double)r)/256.f,((double)g)/256.f,((double)b)/256.f);
+	glVertex2i(x,y);
 }
 
 void plot_pixel_jpeg(int x,int y,unsigned char r,unsigned char g,unsigned char b)
 {
-  buffer[HEIGHT-y-1][x][0]=r;
-  buffer[HEIGHT-y-1][x][1]=g;
-  buffer[HEIGHT-y-1][x][2]=b;
+	buffer[HEIGHT-y-1][x][0]=r;
+	buffer[HEIGHT-y-1][x][1]=g;
+	buffer[HEIGHT-y-1][x][2]=b;
 }
 
 void plot_pixel(int x,int y,unsigned char r,unsigned char g, unsigned char b)
 {
-  plot_pixel_display(x,y,r,g,b);
-  if(mode == MODE_JPEG)
-      plot_pixel_jpeg(x,y,r,g,b);
+	plot_pixel_display(x,y,r,g,b);
+	if(mode == MODE_JPEG)
+			plot_pixel_jpeg(x,y,r,g,b);
 }
 
 void save_jpg()
 {
-  Pic *in = NULL;
+	Pic *in = NULL;
 
-  in = pic_alloc(WIDTH, HEIGHT, 3, NULL);
-  printf("Saving JPEG file: %s\n", filename);
+	in = pic_alloc(WIDTH, HEIGHT, 3, NULL);
+	printf("Saving JPEG file: %s\n", filename);
 
-  memcpy(in->pix,buffer,3*WIDTH*HEIGHT);
-  if (jpeg_write(filename, in))
-    printf("File saved Successfully\n");
-  else
-    printf("Error in Saving\n");
+	memcpy(in->pix,buffer,3*WIDTH*HEIGHT);
+	if (jpeg_write(filename, in))
+		printf("File saved Successfully\n");
+	else
+		printf("Error in Saving\n");
 
-  pic_free(in);      
+	pic_free(in);      
 
 }
 
 void parse_check(char *expected,char *found)
 {
-  if(strcasecmp(expected,found))
-    {
-      char error[100];
-      printf("Expected '%s ' found '%s '\n",expected,found);
-      printf("Parse error, abnormal abortion\n");
-      exit(0);
-    }
+	if(strcasecmp(expected,found))
+		{
+			char error[100];
+			printf("Expected '%s ' found '%s '\n",expected,found);
+			printf("Parse error, abnormal abortion\n");
+			exit(0);
+		}
 
 }
 
 void parse_doubles(FILE*file, char *check, double p[3])
 {
-  char str[100];
-  fscanf(file,"%s",str);
-  parse_check(check,str);
-  fscanf(file,"%lf %lf %lf",&p[0],&p[1],&p[2]);
-  printf("%s %lf %lf %lf\n",check,p[0],p[1],p[2]);
+	char str[100];
+	fscanf(file,"%s",str);
+	parse_check(check,str);
+	fscanf(file,"%lf %lf %lf",&p[0],&p[1],&p[2]);
+	printf("%s %lf %lf %lf\n",check,p[0],p[1],p[2]);
 }
 
 void parse_rad(FILE*file,double *r)
 {
-  char str[100];
-  fscanf(file,"%s",str);
-  parse_check("rad:",str);
-  fscanf(file,"%lf",r);
-  printf("rad: %f\n",*r);
+	char str[100];
+	fscanf(file,"%s",str);
+	parse_check("rad:",str);
+	fscanf(file,"%lf",r);
+	printf("rad: %f\n",*r);
 }
 
 void parse_shi(FILE*file,double *shi)
 {
-  char s[100];
-  fscanf(file,"%s",s);
-  parse_check("shi:",s);
-  fscanf(file,"%lf",shi);
-  printf("shi: %f\n",*shi);
+	char s[100];
+	fscanf(file,"%s",s);
+	parse_check("shi:",s);
+	fscanf(file,"%lf",shi);
+	printf("shi: %f\n",*shi);
 }
 
 int loadScene(char *argv)
 {
-  FILE *file = fopen(argv,"r");
-  int number_of_objects;
-  char type[50];
-  int i;
-  Triangle t;
-  Sphere s;
-  Light l;
-  fscanf(file,"%i",&number_of_objects);
+	FILE *file = fopen(argv,"r");
+	int number_of_objects;
+	char type[50];
+	int i;
+	Triangle t;
+	Sphere s;
+	Light l;
+	fscanf(file,"%i",&number_of_objects);
 
-  printf("number of objects: %i\n",number_of_objects);
-  char str[200];
+	printf("number of objects: %i\n",number_of_objects);
+	char str[200];
 
-  parse_doubles(file,"amb:",ambient_light);
+	parse_doubles(file,"amb:",ambient_light);
 
-  for(i=0;i < number_of_objects;i++)
-    {
-      fscanf(file,"%s\n",type);
-      printf("%s\n",type);
-      if(strcasecmp(type,"triangle")==0)
+	for(i=0;i < number_of_objects;i++)
+		{
+			fscanf(file,"%s\n",type);
+			printf("%s\n",type);
+			if(strcasecmp(type,"triangle")==0)
 	{
 
-	  printf("found triangle\n");
-	  int j;
+		printf("found triangle\n");
+		int j;
 
-	  for(j=0;j < 3;j++)
-	    {
-	      parse_doubles(file,"pos:",t.v[j].position);
-	      parse_doubles(file,"nor:",t.v[j].normal);
-	      parse_doubles(file,"dif:",t.v[j].color_diffuse);
-	      parse_doubles(file,"spe:",t.v[j].color_specular);
-	      parse_shi(file,&t.v[j].shininess);
-	    }
+		for(j=0;j < 3;j++)
+			{
+				parse_doubles(file,"pos:",t.v[j].position);
+				parse_doubles(file,"nor:",t.v[j].normal);
+				parse_doubles(file,"dif:",t.v[j].color_diffuse);
+				parse_doubles(file,"spe:",t.v[j].color_specular);
+				parse_shi(file,&t.v[j].shininess);
+			}
 
-	  if(num_triangles == MAX_TRIANGLES)
-	    {
-	      printf("too many triangles, you should increase MAX_TRIANGLES!\n");
-	      exit(0);
-	    }
-	  triangles[num_triangles++] = t;
+		if(num_triangles == MAX_TRIANGLES)
+			{
+				printf("too many triangles, you should increase MAX_TRIANGLES!\n");
+				exit(0);
+			}
+		triangles[num_triangles++] = t;
 	}
-      else if(strcasecmp(type,"sphere")==0)
+			else if(strcasecmp(type,"sphere")==0)
 	{
-	  printf("found sphere\n");
+		printf("found sphere\n");
 
-	  parse_doubles(file,"pos:",s.position);
-	  parse_rad(file,&s.radius);
-	  parse_doubles(file,"dif:",s.color_diffuse);
-	  parse_doubles(file,"spe:",s.color_specular);
-	  parse_shi(file,&s.shininess);
+		parse_doubles(file,"pos:",s.position);
+		parse_rad(file,&s.radius);
+		parse_doubles(file,"dif:",s.color_diffuse);
+		parse_doubles(file,"spe:",s.color_specular);
+		parse_shi(file,&s.shininess);
 
-	  if(num_spheres == MAX_SPHERES)
-	    {
-	      printf("too many spheres, you should increase MAX_SPHERES!\n");
-	      exit(0);
-	    }
-	  spheres[num_spheres++] = s;
+		if(num_spheres == MAX_SPHERES)
+			{
+				printf("too many spheres, you should increase MAX_SPHERES!\n");
+				exit(0);
+			}
+		spheres[num_spheres++] = s;
 	}
-      else if(strcasecmp(type,"light")==0)
+			else if(strcasecmp(type,"light")==0)
 	{
-	  printf("found light\n");
-	  parse_doubles(file,"pos:",l.position);
-	  parse_doubles(file,"col:",l.color);
+		printf("found light\n");
+		parse_doubles(file,"pos:",l.position);
+		parse_doubles(file,"col:",l.color);
 
-	  if(num_lights == MAX_LIGHTS)
-	    {
-	      printf("too many lights, you should increase MAX_LIGHTS!\n");
-	      exit(0);
-	    }
-	  lights[num_lights++] = l;
+		if(num_lights == MAX_LIGHTS)
+			{
+				printf("too many lights, you should increase MAX_LIGHTS!\n");
+				exit(0);
+			}
+		lights[num_lights++] = l;
 	}
-      else
+			else
 	{
-	  printf("unknown type in scene description:\n%s\n",type);
-	  exit(0);
+		printf("unknown type in scene description:\n%s\n",type);
+		exit(0);
 	}
-    }
-  return 0;
+		}
+	return 0;
 }
 
 void display()
@@ -430,52 +456,52 @@ void display()
 
 void init()
 {
-  glMatrixMode(GL_PROJECTION);
-  glOrtho(0,WIDTH,0,HEIGHT,1,-1);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
+	glMatrixMode(GL_PROJECTION);
+	glOrtho(0,WIDTH,0,HEIGHT,1,-1);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 
-  glClearColor(0,0,0,0);
-  glClear(GL_COLOR_BUFFER_BIT);
+	glClearColor(0,0,0,0);
+	glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void idle()
 {
-  //hack to make it only draw once
-  static int once=0;
-  if(!once)
-  {
-      draw_scene();
-      if(mode == MODE_JPEG)
+	//hack to make it only draw once
+	static int once=0;
+	if(!once)
+	{
+			draw_scene();
+			if(mode == MODE_JPEG)
 	save_jpg();
-    }
-  once=1;
+		}
+	once=1;
 }
 
 int main (int argc, char ** argv)
 {
-  if (argc<2 || argc > 3)
-  {  
-    printf ("usage: %s <scenefile> [jpegname]\n", argv[0]);
-    exit(0);
-  }
-  if(argc == 3)
-    {
-      mode = MODE_JPEG;
-      filename = argv[2];
-    }
-  else if(argc == 2)
-    mode = MODE_DISPLAY;
+	if (argc<2 || argc > 3)
+	{  
+		printf ("usage: %s <scenefile> [jpegname]\n", argv[0]);
+		exit(0);
+	}
+	if(argc == 3)
+		{
+			mode = MODE_JPEG;
+			filename = argv[2];
+		}
+	else if(argc == 2)
+		mode = MODE_DISPLAY;
 
-  glutInit(&argc,argv);
-  loadScene(argv[1]);
+	glutInit(&argc,argv);
+	loadScene(argv[1]);
 
-  glutInitDisplayMode(GLUT_RGBA | GLUT_SINGLE);
-  glutInitWindowPosition(0,0);
-  glutInitWindowSize(WIDTH,HEIGHT);
-  int window = glutCreateWindow("Ray Tracer");
-  glutDisplayFunc(display);
-  glutIdleFunc(idle);
-  init();
-  glutMainLoop();
+	glutInitDisplayMode(GLUT_RGBA | GLUT_SINGLE);
+	glutInitWindowPosition(0,0);
+	glutInitWindowSize(WIDTH,HEIGHT);
+	int window = glutCreateWindow("Ray Tracer");
+	glutDisplayFunc(display);
+	glutIdleFunc(idle);
+	init();
+	glutMainLoop();
 }
