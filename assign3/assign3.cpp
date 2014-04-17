@@ -110,9 +110,9 @@ double dot(Vertex v1, Vertex v2)
 Vertex scale(Vertex v, double scaleFactor)
 {
 		Vertex toReturn;
-		toReturn.position[0] *= scaleFactor;
-		toReturn.position[1] *= scaleFactor;
-		toReturn.position[2] *= scaleFactor;
+		toReturn.position[0] = v.position[0] * scaleFactor;
+		toReturn.position[1] = v.position[1] * scaleFactor;
+		toReturn.position[2] = v.position[2] * scaleFactor;
 		return toReturn;
 }
 
@@ -132,6 +132,17 @@ Vertex normalize(Vertex v)
 		toReturn.position[2] = v.position[2] / mag;
 
 		return toReturn;
+}
+
+struct V2
+{
+	double x;
+	double y;
+};
+
+double area(V2 p0, V2 p1, V2 p2)
+{
+	return .5 * ((p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y));
 }
 
 //MODIFY THIS FUNCTION
@@ -155,7 +166,7 @@ void draw_scene()
 						rayY /= d;
 						rayZ /= d;
 
-						float t = 0;
+						double t = 0;
 
 						Triangle* foundTriangle = null;
 						Sphere* foundSphere = null;
@@ -180,21 +191,93 @@ void draw_scene()
 
 								double t_Triangle = -1 * dot(subtract(zeroVector,triangle.v[0]),planeNormal) / dot(rayVector, planeNormal);
 
-								if(t_Triangle <= 0)
+								if(t_Triangle < 0)
 								{
 										continue;
 								}
 
+								//cout << "ORIGINAL VECTOR" << rayVector.position[0] << " "<< rayVector.position[1] << " "<< rayVector.position[2]<<endl;
+								//cout << t_Triangle<<endl;
+
 								rayVector = scale(rayVector,t_Triangle);
+
+								//cout << "ORIGINAL VECTOR" << rayVector.position[0] << " "<< rayVector.position[1] << " "<< rayVector.position[2]<<endl;
+
+								/*double maxVal = abs(planeNormal.position[0]);
+								maxVal = max(maxVal, abs(planeNormal.position[1]));
+								maxVal = max(maxVal, abs(planeNormal.position[2]));
+
+								V2 p0;
+								V2 p1;
+								V2 p2;
+
+								V2 vertexHit;
+
+								if(maxVal == abs(planeNormal.position[0]))
+								{
+									p0.y = triangle.v[0].position[1];
+									p1.y = triangle.v[1].position[1];
+									p2.y = triangle.v[2].position[1];
+
+									p0.x = triangle.v[0].position[2];
+									p1.x = triangle.v[1].position[2];
+									p2.x = triangle.v[2].position[2];
+
+									vertexHit.x = rayVector.position[2];
+									vertexHit.y = rayVector.position[1];
+
+									cout << "Cutting x"<<endl;
+								}
+								else if(maxVal = abs(planeNormal.position[1]))
+								{
+									p0.y = triangle.v[0].position[2];
+									p1.y = triangle.v[1].position[2];
+									p2.y = triangle.v[2].position[2];
+
+									p0.x = triangle.v[0].position[0];
+									p1.x = triangle.v[1].position[0];
+									p2.x = triangle.v[2].position[0];
+
+									vertexHit.x = rayVector.position[0];
+									vertexHit.y = rayVector.position[2];
+
+									cout << "Cutting y"<<endl;
+								}
+								else
+								{
+									p0.y = triangle.v[0].position[1];
+									p1.y = triangle.v[1].position[1];
+									p2.y = triangle.v[2].position[1];
+
+									p0.x = triangle.v[0].position[0];
+									p1.x = triangle.v[1].position[0];
+									p2.x = triangle.v[2].position[0];
+
+									vertexHit.x = rayVector.position[0];
+									vertexHit.y = rayVector.position[1];
+
+									cout << "Cutting z"<<endl;
+								}
+
+								cout <<"VERTEX: "<< vertexHit.x<<" "<<vertexHit.y<<endl;*/
 
 								double area = .5 * magnitude(cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0])));
 								double alpha = magnitude(cross(subtract(triangle.v[1],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
 								double beta = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
 								double gamma = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[1],rayVector))) * .5 / area;
 
-								if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1)
+								cout << alpha << " "<<beta<<" "<<gamma<<endl;
+
+								if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1 && (alpha + beta + gamma == 1))
 								{
-										t = t_Triangle;
+										if(t > 0)
+										{
+											t = min(t_Triangle,t);
+										}
+										else
+										{
+											t = t_Triangle;
+										}
 										foundTriangle = &triangle;
 								}
 						}
@@ -216,7 +299,7 @@ void draw_scene()
 								float t_0 = (-b + sqrt(discriminant))/2;
 								float t_1 = (-b - sqrt(discriminant))/2;
 
-								float sphere_t = 0;
+								double sphere_t = 0;
 
 								if(t_0 > 0 && t_1 > 0)
 								{
@@ -273,7 +356,10 @@ void draw_scene()
 								{
 									plot_pixel(x,y,255,0,0);
 								}
-
+								else
+								{
+									plot_pixel(x,y,0,255,0);
+								}
 								
 								
 								glEnd();
