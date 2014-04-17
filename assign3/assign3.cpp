@@ -140,12 +140,12 @@ void draw_scene()
 
     float tanVal = tan(fov/2.0 * PI / 180.0);
 
-    for(float x = 0; x < 2 * ar * tanVal-1.0f*(2.0f*ar*tanVal)/WIDTH; x+=1.0f*(2.0f*ar*tanVal)/WIDTH)
+    for(int x = 0; x < WIDTH; x++)
     {
-        for(float y = 0; y < 2*tanVal-1.0f*(2.0f*tanVal)/HEIGHT; y+=1.0f*(2.0f*tanVal)/HEIGHT)
+        for(int y = 0; y < HEIGHT; y++)
         {
-            float rayX = x - ar * tanVal;
-            float rayY = tanVal - y;
+            float rayX = 2 * ar * tanVal * x / (1.0*WIDTH - 1) - ar * tanVal;
+            float rayY = 2 * tanVal * y / (1.0*HEIGHT - 1) - tanVal;
             float rayZ = -1;
             float d = sqrt(rayX * rayX + rayY * rayY + rayZ * rayZ);
 
@@ -186,54 +186,6 @@ void draw_scene()
                 double beta = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
                 double gamma = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[1],rayVector))) * .5 / area;
 
-                //double p0Val = dot(cross(subtract (triangle.v[1], triangle.v[0]), subtract(scale(rayVector,t_Triangle),triangle.v[0])),planeNormal);
-                //double p1Val = dot(cross(subtract (triangle.v[2], triangle.v[1]), subtract(scale(rayVector,t_Triangle),triangle.v[1])),planeNormal);
-                //double p2Val = dot(cross(subtract (triangle.v[0], triangle.v[2]), subtract(scale(rayVector,t_Triangle),triangle.v[2])),planeNormal);
-                
-                /*double p0X = triangle.v[0].position[0];
-                double p0Y = triangle.v[0].position[1];
-                double p1X = triangle.v[1].position[0];
-                double p1Y = triangle.v[1].position[1];
-                double p2X = triangle.v[2].position[0];
-                double p2Y = triangle.v[2].position[1];
-
-                cout << "A: "<<p0X << " "<<p0Y << endl;
-                cout << "B: "<<p1X << " "<<p1Y << endl;
-                cout << "C: "<<p2X << " "<<p2Y << endl;
-
-                double hitX = rayX * t_Triangle;
-                double hitY = rayY * t_Triangle;
-
-                double ABx = p1X - p0X;
-                double ABy = p1Y - p0Y;
-
-                double ACx = p2X - p0X;
-                double ACy = p2Y - p0Y;
-
-                double totalArea = abs(ABx*ACy - ABy*ACx)/2.0;
-
-                cout << ABx << " " << ABy << endl;
-                cout << ABy<< " "<< ACx << endl;
-                cout << p1X << " " <<p0X << endl;
-                cout << p1Y << " " <<p0Y << endl;
-
-                double PAx = p0X - hitX;
-                double PAy = p0Y - hitY;
-
-                double PBx = p1X - hitX;
-                double PBy = p1Y - hitY;
-
-                double PCx = p2X - hitX;
-                double PCy = p2Y - hitY;
-
-                double alpha = abs(PBx * PCy - PBy * PCx) / ( 2 * totalArea);
-                double beta = abs(PCx * PAy - PCy * PAx) / ( 2 * totalArea);
-                double gamma = abs(PAx * PBy - PAy * PBx) / ( 2 * totalArea);
-
-                cout << "Total Area: "<<totalArea<<endl;
-
-                cout << alpha << " "<<beta<<" "<<gamma << endl;*/
-
                 if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1)
                 {
                     t = t_Triangle;
@@ -256,8 +208,6 @@ void draw_scene()
                 float t_0 = (-b + sqrt(discriminant))/2;
                 float t_1 = (-b - sqrt(discriminant))/2;
 
-                //cout << "Found a T for "<<sphereIndex<<endl;
-
                 float sphere_t = 0;
 
                 if(t_0 > 0 && t_1 > 0)
@@ -277,8 +227,6 @@ void draw_scene()
                     continue;
                 }
 
-                //cout << "Sphere: "<<sphereIndex<<endl;
-
                 if(sphere_t > 0)
                 {
                     if(t > 0)
@@ -294,68 +242,11 @@ void draw_scene()
 
             if(t > 0)
             {
-                //Do shadow ray
-                float startX = rayX * t;
-                float startY = rayY * t;
-                float startZ = rayZ * t;
-
-                /*
-
-                float shadow_t = 0;
-
-                for(int sphereIndex = 0; sphereIndex < num_spheres; sphereIndex++)
-                {
-                    Sphere s = spheres[sphereIndex];
-                    float a = 1;
-                    float b = 2 * (rayX * (-s.position[0]) + rayY * (-s.position[1]) + rayZ * (-s.position[2]));
-                    float c = s.position[0]*s.position[0] + s.position[1]*s.position[1] + s.position[2]*s.position[2] - s.radius * s.radius;
-
-                    float discriminant = b * b - 4 * a * c;
-
-                    if(discriminant < 0)
-                    {
-                        continue;
-                    }
-                    float t_0 = (-b + sqrt(discriminant))/2;
-                    float t_1 = (-b - sqrt(discriminant))/2;
-
-                    float sphere_t = 0;
-
-                    if(t_0 > 0 && t_1 > 0)
-                    {
-                        sphere_t = min(t_0,t_1);
-                    }
-                    else if(t_0 > 0)
-                    {
-                        sphere_t = t_0;
-                    }
-                    else if(t_1 > 0)
-                    {
-                        sphere_t = t_1;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-
-                    if(sphere_t > 0)
-                    {
-                        if(shadow_t > 0)
-                        {
-                            shadow_t = min(sphere_t,shadow_t);
-                        }
-                        else
-                        {
-                            shadow_t = sphere_t;
-                        }
-                    }
-                }*/
-
 
 
                 glPointSize(2.0);  
                 glBegin(GL_POINTS);
-                plot_pixel(x/((2.0f*ar*tanVal)/WIDTH),HEIGHT-y/((2.0f*tanVal)/HEIGHT),255,255,255);
+                plot_pixel(x,y,255,255,255);
                 glEnd();
                 glFlush();
             }
@@ -363,7 +254,7 @@ void draw_scene()
             {
                 glPointSize(2.0);  
                 glBegin(GL_POINTS);
-                plot_pixel(x/((2.0f*ar*tanVal)/WIDTH),HEIGHT-y/((2.0f*tanVal)/HEIGHT),0,0,0);
+                plot_pixel(x,y,0,0,0);
                 glEnd();
                 glFlush();
             }
