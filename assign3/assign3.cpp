@@ -355,7 +355,7 @@ void draw_scene()
 
                 glPointSize(2.0);  
                 glBegin(GL_POINTS);
-                plot_pixel(x/((2.0f*ar*tanVal)/WIDTH),y/((2.0f*tanVal)/HEIGHT),255,255,255);
+                plot_pixel(x/((2.0f*ar*tanVal)/WIDTH),HEIGHT-y/((2.0f*tanVal)/HEIGHT),255,255,255);
                 glEnd();
                 glFlush();
             }
@@ -363,7 +363,7 @@ void draw_scene()
             {
                 glPointSize(2.0);  
                 glBegin(GL_POINTS);
-                plot_pixel(x/((2.0f*ar*tanVal)/WIDTH),y/((2.0f*tanVal)/HEIGHT),0,0,0);
+                plot_pixel(x/((2.0f*ar*tanVal)/WIDTH),HEIGHT-y/((2.0f*tanVal)/HEIGHT),0,0,0);
                 glEnd();
                 glFlush();
             }
