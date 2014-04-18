@@ -192,26 +192,12 @@ void draw_scene()
 
 								double t_Triangle = dot(subtract(triangle.v[0],zeroVector),planeNormal) / dot(rayVector, planeNormal);
 
-								if(x != 80 || y != 61)//rayZ != -1)
-								{
-									//continue;
-								}
-
-								cout <<"THE POINT: "<< x / (1.0*WIDTH) << " " << y / (1.0*HEIGHT)<< " " << -1 << endl;
-
-								cout << "BLARGH" << x << " "<<y<<endl;
-
 								if(t_Triangle < 0)
 								{
 										continue;
 								}
 
-								cout << "ORIGINAL VECTOR" << rayVector.position[0] << " "<< rayVector.position[1] << " "<< rayVector.position[2]<<endl;
-								cout << t_Triangle<<endl;
-
 								rayVector = scale(rayVector,t_Triangle);
-
-								cout << "SCALED VECTOR" << rayVector.position[0] << " "<< rayVector.position[1] << " "<< rayVector.position[2]<<endl;
 
 								double area = .5 * magnitude(cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0])));
 								double alpha = magnitude(cross(subtract(triangle.v[1],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
@@ -220,22 +206,8 @@ void draw_scene()
 
 								double epsilon = .00000001;
 
-								/*
-								cout << alpha << " "<<beta<<" "<<gamma<<endl;
-								cout << "3D AREA "<<area<<endl;
-
-								cout << "(Alpha + Beta) == 1: " << ((alpha + beta) == 1) << endl;
-								cout << "Alpha + Beta: " << (alpha + beta) << endl;
-								double add = alpha + beta;
-								
-								cout << "Add == 1: " << (add == 1) <<endl;
-								cout << "Gamma == 0: " << (gamma == 0) << endl;
-								cout << "Add == 1 (epsilon): "<<((alpha + beta) >= 1-epsilon && (alpha + beta) <= 1 + epsilon )<< endl;
-								*/
-
 								if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1 && ((alpha + beta + gamma) >= 1-epsilon && (alpha + beta + gamma) <= 1 + epsilon ))
 								{
-									cout << "I'LL ALLOW IT"<<endl;
 									if(t > 0)
 									{
 										t = min(t_Triangle,t);
