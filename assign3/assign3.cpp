@@ -169,8 +169,12 @@ void draw_scene()
 
 						double t = 0;
 
-						Triangle* foundTriangle = null;
-						Sphere* foundSphere = null;
+						Triangle foundTriangle;
+						Sphere foundSphere;
+						bool triangleWasFound = false;
+						bool sphereWasFound = false;
+
+						double savedAlpha,savedBeta,savedGamma;
 
 						//Iterate through triangles
 						for(int triangleIndex = 0; triangleIndex < num_triangles; triangleIndex++)
@@ -211,12 +215,25 @@ void draw_scene()
 									if(t > 0)
 									{
 										t = min(t_Triangle,t);
+										if(t == t_Triangle)
+										{
+											foundTriangle = triangle;
+											savedAlpha = alpha;
+											savedBeta = beta;
+											savedGamma = gamma;
+											triangleWasFound = true;
+										}
 									}
 									else
 									{
 										t = t_Triangle;
+										foundTriangle = triangle;
+										triangleWasFound = true;
+										savedAlpha = alpha;
+										savedBeta = beta;
+										savedGamma = gamma;
 									}
-									foundTriangle = &triangle;
+
 								}
 						}
 
@@ -261,12 +278,19 @@ void draw_scene()
 										if(t > 0)
 										{
 												t = min(sphere_t,t);
+												if(t == sphere_t)
+												{
+													foundSphere = sphere;
+													sphereWasFound = true;
+												}
 										}
 										else
 										{
 												t = sphere_t;
+												foundSphere = sphere;
+												sphereWasFound = true;
 										}
-										foundSphere = &sphere;
+										
 								}
 						} 
 
@@ -281,18 +305,31 @@ void draw_scene()
 								for(int lightIndex = 0; lightIndex < num_lights; lightIndex++)
 								{
 									Light light = lights[lightIndex];
+									Vertex lightPosition;
+									lightPosition.position[0] = light.position[0];
+									lightPosition.position[1] = light.position[1];
+									lightPosition.position[2] = light.position[2];
+
+									Vertex rayToLight = normalize(subtract(lightPosition,rayLocation));
+
+
+
 								}
 
 								glPointSize(2.0);  
 								glBegin(GL_POINTS);
 								
-								if(foundSphere != null)
+								if(sphereWasFound)
 								{
-									plot_pixel(x,y,0,0,255);
+									plot_pixel(x,y,foundSphere.color_diffuse[0]*255,foundSphere.color_diffuse[1]*255,foundSphere.color_diffuse[2]*255);
 								}
-								else if(foundTriangle != null)
+								else if(triangleWasFound)
 								{
-									plot_pixel(x,y,255,0,0);
+									plot_pixel(x,y,
+										(savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0])*255,
+										(savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1])*255,
+										(savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2])*255
+										);
 								}
 								else
 								{
