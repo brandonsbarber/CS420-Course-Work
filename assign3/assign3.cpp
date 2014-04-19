@@ -555,9 +555,9 @@ void draw_scene()
 										blueVal += foundSphere.color_diffuse[2] * rayToLight.dot(sphereNormal) * light.color[2];
 
 										//Specular
-										redVal += foundSphere.color_specular[0] * pow(perfectReflect.dot(toViewer),foundSphere.shininess) * light.color[0];
-										greenVal += foundSphere.color_specular[1] * pow(perfectReflect.dot(toViewer),foundSphere.shininess) * light.color[1];
-										blueVal += foundSphere.color_specular[2] * pow(perfectReflect.dot(toViewer),foundSphere.shininess) * light.color[2];
+										redVal += foundSphere.color_specular[0] * pow(clamp(perfectReflect.dot(toViewer)),foundSphere.shininess) * light.color[0];
+										greenVal += foundSphere.color_specular[1] * pow(clamp(perfectReflect.dot(toViewer)),foundSphere.shininess) * light.color[1];
+										blueVal += foundSphere.color_specular[2] * pow(clamp(perfectReflect.dot(toViewer)),foundSphere.shininess) * light.color[2];
 									}
 									else if(triangleWasFound)
 									{
