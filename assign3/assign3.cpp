@@ -30,6 +30,8 @@ char *filename=0;
 int mode=MODE_DISPLAY;
 
 //you may want to make these smaller for debugging purposes
+/*#define WIDTH 160
+#define HEIGHT 120*/
 #define WIDTH 160
 #define HEIGHT 120
 
@@ -69,6 +71,76 @@ typedef struct _Light
 	double color[3];
 } Light;
 
+struct Vector
+{
+	double x;
+	double y;
+	double z;
+	double magnitude()
+	{
+		return sqrt(x*x + y*y + z*z);
+	}
+
+	Vector normalize()
+	{
+		Vector toReturn;
+		toReturn.x = x/magnitude();
+		toReturn.y = y/magnitude();
+		toReturn.z = z/magnitude();
+		return toReturn;
+	}
+
+	Vector operator-(const Vector &other)
+	{
+		Vector toReturn;
+		toReturn.x = x - other.x;
+		toReturn.y = y - other.y;
+		toReturn.z = z - other.z;
+		return toReturn;
+	}
+
+	double dot(Vector o)
+	{
+		return x*o.x + y*o.y + z*o.z;
+	}
+
+	Vector operator*(const double &scaleFactor)
+	{
+		Vector toReturn;
+		toReturn.x = x * scaleFactor;
+		toReturn.y = y * scaleFactor;
+		toReturn.z = z * scaleFactor;
+		return toReturn;
+	}
+
+	void operator*=(const double &scaleFactor)
+	{
+		x *= scaleFactor;
+		y *= scaleFactor;
+		z *= scaleFactor;
+	}
+
+	Vector cross(Vector v)
+	{
+			Vector toReturn;
+			toReturn.x = y * v.z - z * v.y;
+			toReturn.y = z * v.x - x * v.z;
+			toReturn.z = x * v.y - y * v.x;
+			return toReturn;
+	}
+
+	Vector operator+(const Vector& other)
+	{
+		Vector toReturn;
+		toReturn.x = x + other.x;
+		toReturn.y = y + other.y;
+		toReturn.z = z + other.z;
+		return toReturn;
+	}
+};
+
+
+
 Triangle triangles[MAX_TRIANGLES];
 Sphere spheres[MAX_SPHERES];
 Light lights[MAX_LIGHTS];
@@ -82,57 +154,7 @@ void plot_pixel_display(int x,int y,unsigned char r,unsigned char g,unsigned cha
 void plot_pixel_jpeg(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 void plot_pixel(int x,int y,unsigned char r,unsigned char g,unsigned char b);
 
-Vertex subtract(Vertex v1, Vertex v2)
-{
-		Vertex toReturn;
-		for(int i = 0; i <= 2; i++)
-		{
-				toReturn.position[i] = v1.position[i] - v2.position[i];
-		}
-		return toReturn;
-}
 
-Vertex cross(Vertex v1, Vertex v2)
-{
-		Vertex toReturn;
-		toReturn.position[0] = v1.position[1] * v2.position[2] - v1.position[2] * v2.position[1];
-		toReturn.position[1] = v1.position[2] * v2.position[0] - v1.position[0] * v2.position[2];
-		toReturn.position[2] = v1.position[0] * v2.position[1] - v1.position[1] * v2.position[0];
-
-		return toReturn;
-}
-
-double dot(Vertex v1, Vertex v2)
-{
-		return v1.position[0] * v2.position[0] + v1.position[1] * v2.position[1] + v1.position[2] * v2.position[2];
-}
-
-Vertex scale(Vertex v, double scaleFactor)
-{
-		Vertex toReturn;
-		toReturn.position[0] = v.position[0] * scaleFactor;
-		toReturn.position[1] = v.position[1] * scaleFactor;
-		toReturn.position[2] = v.position[2] * scaleFactor;
-		return toReturn;
-}
-
-double magnitude(Vertex v)
-{
-		return sqrt(v.position[0]*v.position[0] + v.position[1]*v.position[1] + v.position[2]*v.position[2]); 
-}
-
-Vertex normalize(Vertex v)
-{
-		Vertex toReturn;
-
-		double mag = magnitude(v);
-
-		toReturn.position[0] = v.position[0] / mag;
-		toReturn.position[1] = v.position[1] / mag;
-		toReturn.position[2] = v.position[2] / mag;
-
-		return toReturn;
-}
 
 struct V2
 {
@@ -143,6 +165,249 @@ struct V2
 double area(V2 p0, V2 p1, V2 p2)
 {
 	return .5 * ((p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y));
+}
+
+bool checkShadowCollisions(Vertex ray, Vertex rayStart, double maxLength)
+{
+	cout << ray.position[0] << " "<< ray.position[1] << " "<< ray.position[2] << endl;
+
+	/*for(int triangleIndex = 0; triangleIndex < num_triangles; triangleIndex++)
+	{
+		Triangle triangle = triangles[triangleIndex];
+
+		Vertex planeNormal = cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0]));
+		planeNormal = normalize(planeNormal);
+
+		Vertex rayVector;
+		rayVector.position[0] = ray.position[0];
+		rayVector.position[1] = ray.position[1];
+		rayVector.position[2] = ray.position[2];
+
+		double t_Triangle = dot(subtract(triangle.v[0],rayStart),planeNormal) / dot(rayVector, planeNormal);
+
+		if(t_Triangle < 0)
+		{
+				continue;
+		}
+
+		rayVector = scale(rayVector,t_Triangle);
+
+		double area = .5 * magnitude(cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0])));
+		double alpha = magnitude(cross(subtract(triangle.v[1],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
+		double beta = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
+		double gamma = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[1],rayVector))) * .5 / area;
+
+		double epsilon = .00000001;
+
+		if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1 && ((alpha + beta + gamma) >= 1-epsilon && (alpha + beta + gamma) <= 1 + epsilon ))
+		{
+			if(t_Triangle > 0 && t_Triangle < maxLength)
+			{
+				return true;
+			}
+		}
+	}*/
+
+	//Iterate through spheres
+	for(int sphereIndex = 0;sphereIndex < num_spheres; sphereIndex++)
+	{
+		Sphere sphere = spheres[sphereIndex];
+		float a = 1;
+		float b = 2 * (ray.position[0] * (rayStart.position[0]-sphere.position[0]) + ray.position[1] * (rayStart.position[1]-sphere.position[1]) + ray.position[2] * (rayStart.position[2]-sphere.position[2]));
+		float c = pow(rayStart.position[0] - sphere.position[0],2) + pow(rayStart.position[1] - sphere.position[1],2) + pow(rayStart.position[2] - sphere.position[2],2) - sphere.radius * sphere.radius;
+
+		float discriminant = b * b - 4 * a * c;
+
+		if(discriminant < 0)
+		{
+			continue;
+		}
+		float t_0 = (-b + sqrt(discriminant))/2;
+		float t_1 = (-b - sqrt(discriminant))/2;
+
+		double epsilon = .00000001;
+
+		if(t_0 > 0 || t_1 > 0)
+		{
+			return true;
+		}
+	} 
+
+	return false;
+}
+
+double clamp(double d)
+{
+	if(d > 1)
+	{
+		return 1;
+	}
+	else if(d < 0)
+	{
+		return 0;
+	}
+	return d;
+}
+
+Vertex subtract(Vertex v1, Vertex v2)
+{
+	Vertex toReturn;
+	toReturn.position[0] = v1.position[0] - v2.position[0];
+	toReturn.position[1] = v1.position[1] - v2.position[1];
+	toReturn.position[2] = v1.position[2] - v2.position[2];
+	return toReturn;
+}
+
+Vector vertexToVector(Vertex v)
+{
+	Vector toReturn;
+	toReturn.x = v.position[0];
+	toReturn.y = v.position[1];
+	toReturn.z = v.position[2];
+	return toReturn;
+}
+
+Vertex cross(Vertex v1, Vertex v2)
+{
+	Vertex toReturn;
+
+	return toReturn;
+}
+
+Vector makeVector(double x, double y, double z)
+{
+	Vector toReturn;
+	toReturn.x = x;
+	toReturn.y = y;
+	toReturn.z = z;
+	return toReturn;
+}
+
+double checkTriangleCollision(Vector startingLocation, Vector ray, int& triangleIndex, double* savedWeights)
+{
+	double collision_T = -1;
+
+	for(int index = 0; index < num_triangles; index++)
+	{
+		Triangle triangle = triangles[index];
+
+		Vector* points = new Vector[3];
+		for(int i = 0; i < 3; i++)
+		{
+			points[i] = vertexToVector(triangle.v[i]);
+		}
+
+		Vector triangleNormal = (points[1] - points[0]).cross((points[2] - points[0])).normalize();
+
+		double t_Denominator = ray.dot(triangleNormal);
+
+		if(t_Denominator == 0)
+		{
+			//never intersects
+			continue;
+		}
+
+		double t_Triangle = (points[0] - startingLocation).dot(triangleNormal) / t_Denominator;
+
+		if(t_Triangle < 0)
+		{
+			continue;
+		}
+
+		Vector intersectLocation = ray * t_Triangle + startingLocation;
+
+		double area = (points[1] - points[0]).cross((points[2] - points[0])).magnitude()*.5;
+		double alpha = (points[1] - intersectLocation).cross((points[2] - intersectLocation)).magnitude() * .5 / area;
+		double beta = (points[0] - intersectLocation).cross((points[2] - intersectLocation)).magnitude() * .5 / area;
+		double gamma = (points[0] - intersectLocation).cross((points[1] - intersectLocation)).magnitude() * .5 / area;
+
+		double epsilon = .000001;
+
+		if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1 && ((alpha + beta + gamma) >= 1-epsilon && (alpha + beta + gamma) <= 1 + epsilon ))
+		{
+			if(collision_T > 0)
+			{
+				if(t_Triangle < collision_T)
+				{
+					collision_T = t_Triangle;
+					triangleIndex = index;
+					savedWeights[0] = alpha;
+					savedWeights[1] = beta;
+					savedWeights[2] = gamma;
+				}
+			}
+			else
+			{
+				collision_T = t_Triangle;
+				triangleIndex = index;
+				savedWeights[0] = alpha;
+				savedWeights[1] = beta;
+				savedWeights[2] = gamma;
+			}
+		}
+	}
+	return collision_T;
+}
+
+double checkSphereCollision(Vector startingLocation, Vector ray, int& sphereIndex)
+{
+	double collision_T = -1;
+
+	for(int index = 0; index < num_spheres; index++)
+	{
+		Sphere sphere = spheres[index];
+		Vector sphereLoc = makeVector(sphere.position[0],sphere.position[1],sphere.position[2]);
+		double a = 1;
+		double b = 2 * (ray.x * (startingLocation.x - sphereLoc.x) + ray.y * (startingLocation.y - sphereLoc.y) + ray.z * (startingLocation.z - sphereLoc.z));
+		double c = (startingLocation.x - sphereLoc.x)*(startingLocation.x - sphereLoc.x) + (startingLocation.y - sphereLoc.y)*(startingLocation.y - sphereLoc.y) + (startingLocation.z - sphereLoc.z)*(startingLocation.z - sphereLoc.z) - sphere.radius * sphere.radius;
+	
+		double discriminant = b*b - 4 * a * c;
+
+		if(discriminant < 0)
+		{
+			continue;
+		}
+		float t_0 = (-b + sqrt(discriminant))/(2*a);
+		float t_1 = (-b - sqrt(discriminant))/(2*a);
+
+		double sphere_T;
+
+		if(t_0 >= 0 && t_1 >= 0)
+		{
+			sphere_T = min(t_0,t_1);
+		}
+		else if(t_0 >= 0)
+		{
+			sphere_T = t_0;
+		}
+		else if(t_1 >= 0)
+		{
+			sphere_T = t_1;
+		}
+		else
+		{
+			continue;
+		}
+
+		if(sphere_T >= 0)
+		{
+			if(collision_T >= 0)
+			{
+				if(sphere_T < collision_T)
+				{
+					collision_T = sphere_T;
+					sphereIndex = index;
+				}
+			}
+			else
+			{
+				collision_T = sphere_T;
+				sphereIndex = index;
+			}
+		}
+	}
+
+	return collision_T;
 }
 
 //MODIFY THIS FUNCTION
@@ -157,6 +422,11 @@ void draw_scene()
 		{
 				for(int y = 0; y < HEIGHT; y++)
 				{
+
+					if(x != 80 || y != 60)
+					{
+						//continue;
+					}
 
 						double rayX = 2.0 * ar * tanVal * x / (1.0*WIDTH) - ar * tanVal;
 						double rayY = 2.0 * tanVal * y / (1.0*HEIGHT) - tanVal;
@@ -176,130 +446,69 @@ void draw_scene()
 
 						double savedAlpha,savedBeta,savedGamma;
 
-						//Iterate through triangles
-						for(int triangleIndex = 0; triangleIndex < num_triangles; triangleIndex++)
+
+						int triangleIndex = 0;
+						double savedWeight[3];
+
+						t = checkTriangleCollision(makeVector(0,0,0),makeVector(rayX,rayY,rayZ),triangleIndex,savedWeight);
+						if(t >= 0)
 						{
-								Triangle triangle = triangles[triangleIndex];
+							triangleWasFound = true;
+							foundTriangle = triangles[triangleIndex];
+							savedAlpha = savedWeight[0];
+							savedBeta = savedWeight[1];
+							savedGamma = savedWeight[2];
 
-								Vertex planeNormal = cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0]));
-								planeNormal = normalize(planeNormal);
-
-								Vertex zeroVector;
-								zeroVector.position[0] = 0;
-								zeroVector.position[1] = 0;
-								zeroVector.position[2] = 0;
-
-								Vertex rayVector;
-								rayVector.position[0] = rayX;
-								rayVector.position[1] = rayY;
-								rayVector.position[2] = rayZ;
-
-								double t_Triangle = dot(subtract(triangle.v[0],zeroVector),planeNormal) / dot(rayVector, planeNormal);
-
-								if(t_Triangle < 0)
-								{
-										continue;
-								}
-
-								rayVector = scale(rayVector,t_Triangle);
-
-								double area = .5 * magnitude(cross(subtract(triangle.v[1],triangle.v[0]),subtract(triangle.v[2],triangle.v[0])));
-								double alpha = magnitude(cross(subtract(triangle.v[1],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
-								double beta = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[2],rayVector))) * .5 / area;
-								double gamma = magnitude(cross(subtract(triangle.v[0],rayVector),subtract(triangle.v[1],rayVector))) * .5 / area;
-
-								double epsilon = .00000001;
-
-								if(alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1 && ((alpha + beta + gamma) >= 1-epsilon && (alpha + beta + gamma) <= 1 + epsilon ))
-								{
-									if(t > 0)
-									{
-										t = min(t_Triangle,t);
-										if(t == t_Triangle)
-										{
-											foundTriangle = triangle;
-											savedAlpha = alpha;
-											savedBeta = beta;
-											savedGamma = gamma;
-											triangleWasFound = true;
-										}
-									}
-									else
-									{
-										t = t_Triangle;
-										foundTriangle = triangle;
-										triangleWasFound = true;
-										savedAlpha = alpha;
-										savedBeta = beta;
-										savedGamma = gamma;
-									}
-
-								}
+							cout << savedAlpha << " "<<savedBeta<<" "<<savedGamma<<endl;
 						}
 
-						//Iterate through spheres
-						for(int sphereIndex = 0;sphereIndex < num_spheres; sphereIndex++)
+						double saved_T = t;
+
+						int sphereIndex = 0;
+
+						t = checkSphereCollision(makeVector(0,0,0),makeVector(rayX,rayY,rayZ),sphereIndex);
+
+						if(t >= 0)
 						{
-								Sphere sphere = spheres[sphereIndex];
-								float a = 1;
-								float b = 2 * (rayX * (-sphere.position[0]) + rayY * (-sphere.position[1]) + rayZ * (-sphere.position[2]));
-								float c = sphere.position[0]*sphere.position[0] + sphere.position[1]*sphere.position[1] + sphere.position[2]*sphere.position[2] - sphere.radius * sphere.radius;
+							sphereWasFound = true;
+							foundSphere = spheres[sphereIndex];
+						}
 
-								float discriminant = b * b - 4 * a * c;
+						if(t > saved_T && saved_T >= 0 || t < 0)
+						{
+							t = saved_T;
+						}
 
-								if(discriminant < 0)
-								{
-										continue;
-								}
-								float t_0 = (-b + sqrt(discriminant))/2;
-								float t_1 = (-b - sqrt(discriminant))/2;
-
-								double sphere_t = 0;
-
-								if(t_0 > 0 && t_1 > 0)
-								{
-										sphere_t = min(t_0,t_1);
-								}
-								else if(t_0 > 0)
-								{
-										sphere_t = t_0;
-								}
-								else if(t_1 > 0)
-								{
-										sphere_t = t_1;
-								}
-								else
-								{
-										continue;
-								}
-
-								if(sphere_t > 0)
-								{
-										if(t > 0)
-										{
-												t = min(sphere_t,t);
-												if(t == sphere_t)
-												{
-													foundSphere = sphere;
-													sphereWasFound = true;
-												}
-										}
-										else
-										{
-												t = sphere_t;
-												foundSphere = sphere;
-												sphereWasFound = true;
-										}
-										
-								}
-						} 
-
-						if(t > 0)
+						if(t >= 0)
 						{
 								Vertex rayLocation;
 								rayLocation.position[0] = rayX * t;
 								rayLocation.position[1] = rayY * t;
 								rayLocation.position[2] = rayZ * t;
+
+								double redVal = 0;
+								double greenVal = 0;
+								double blueVal = 0;
+
+								/*
+								if(sphereWasFound)
+								{
+									redVal = foundSphere.color_diffuse[0];
+									greenVal = foundSphere.color_diffuse[1];
+									blueVal = foundSphere.color_diffuse[2];
+								}
+								else if(triangleWasFound)
+								{
+										redVal = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
+										greenVal = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
+										blueVal = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
+								}
+								*/
+
+								//calc ambient light
+								redVal = ambient_light[0];
+								greenVal = ambient_light[1];
+								blueVal = ambient_light[2];
 
 								//Cast shadow rays
 								for(int lightIndex = 0; lightIndex < num_lights; lightIndex++)
@@ -310,33 +519,67 @@ void draw_scene()
 									lightPosition.position[1] = light.position[1];
 									lightPosition.position[2] = light.position[2];
 
-									Vertex rayToLight = normalize(subtract(lightPosition,rayLocation));
+									/*Vertex rayToLight = subtract(lightPosition,rayLocation);
+
+									cout << "Hit on: "<<rayToLight.position[0] << " "<<rayToLight.position[1] << " "<<rayToLight.position[2] << endl;
+
+									Vertex normalizedRayToLight = normalize(rayToLight);*/
+
+									/*if(!checkShadowCollisions(normalizedRayToLight,rayLocation,magnitude(rayToLight)))
+									{
+										if(sphereWasFound)
+										{
+											redVal = foundSphere.color_diffuse[0];
+											greenVal = foundSphere.color_diffuse[1];
+											blueVal = foundSphere.color_diffuse[2];
+											Vertex sphereLoc;
+											sphereLoc.position[0] = foundSphere.position[0];
+											sphereLoc.position[1] = foundSphere.position[1];
+											sphereLoc.position[2] = foundSphere.position[2];
+
+											Vertex incomingLightRay = normalize(subtract(zero,rayToLight));
+
+											Vertex sphereNormal = scale(normalize(subtract(rayLocation,sphereLoc)),1.0/foundSphere.radius);
+
+											Vertex reflectedRay = normalize(subtract(scale(sphereNormal, 2 * dot(incomingLightRay,sphereNormal)),incomingLightRay));
+											Vertex toCameraRay = normalize(subtract(zero,rayLocation));
 
 
+											/*redVal += foundSphere.color_diffuse[0]*clamp(dot(normalizedRayToLight,sphereNormal)) + foundSphere.color_specular[0] * pow(dot(reflectedRay,toCameraRay),foundSphere.shininess);
+											greenVal += foundSphere.color_diffuse[1]*clamp(dot(normalizedRayToLight,sphereNormal)) + foundSphere.color_specular[1] * pow(dot(reflectedRay,toCameraRay),foundSphere.shininess);
+											blueVal += foundSphere.color_diffuse[2]*clamp(dot(normalizedRayToLight,sphereNormal)) + foundSphere.color_specular[2] * pow(dot(reflectedRay,toCameraRay),foundSphere.shininess);*/
+										/*}
+										else if(triangleWasFound)
+										{
+											redVal = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
+											greenVal = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
+											blueVal = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
+										}
+									}*/
 
 								}
+
+									if(sphereWasFound)
+									{
+										redVal = foundSphere.color_diffuse[0];
+										greenVal = foundSphere.color_diffuse[1];
+										blueVal = foundSphere.color_diffuse[2];
+									}
+									else if(triangleWasFound)
+									{
+										cout << savedAlpha << " "<<savedBeta<<" "<<savedGamma<<endl;
+										redVal = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
+										greenVal = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
+										blueVal = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
+									}
 
 								glPointSize(2.0);  
 								glBegin(GL_POINTS);
 								
-								if(sphereWasFound)
-								{
-									plot_pixel(x,y,foundSphere.color_diffuse[0]*255,foundSphere.color_diffuse[1]*255,foundSphere.color_diffuse[2]*255);
-								}
-								else if(triangleWasFound)
-								{
-									plot_pixel(x,y,
-										(savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0])*255,
-										(savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1])*255,
-										(savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2])*255
-										);
-								}
-								else
-								{
-									plot_pixel(x,y,0,255,0);
-								}
-								
-								
+								cout << "Colors: "<<redVal << " "<<greenVal<<" "<<blueVal<<endl;
+
+								plot_pixel(x,y,redVal*255,greenVal*255,blueVal*255);
+
 								glEnd();
 								glFlush();
 						}
