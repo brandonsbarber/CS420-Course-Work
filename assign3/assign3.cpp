@@ -437,7 +437,7 @@ void draw_scene()
 						rayY /= d;
 						rayZ /= d;
 
-						double t = 0;
+						double t = -1;
 
 						Triangle foundTriangle;
 						Sphere foundSphere;
@@ -481,10 +481,7 @@ void draw_scene()
 
 						if(t >= 0)
 						{
-								Vertex rayLocation;
-								rayLocation.position[0] = rayX * t;
-								rayLocation.position[1] = rayY * t;
-								rayLocation.position[2] = rayZ * t;
+								Vector hitLocation = makeVector(rayX,rayY,rayZ) * t;
 
 								double redVal = 0;
 								double greenVal = 0;
@@ -514,50 +511,32 @@ void draw_scene()
 								for(int lightIndex = 0; lightIndex < num_lights; lightIndex++)
 								{
 									Light light = lights[lightIndex];
-									Vertex lightPosition;
-									lightPosition.position[0] = light.position[0];
-									lightPosition.position[1] = light.position[1];
-									lightPosition.position[2] = light.position[2];
+									Vector lightPosition;
+									lightPosition.x = light.position[0];
+									lightPosition.y = light.position[1];
+									lightPosition.z = light.position[2];
 
-									/*Vertex rayToLight = subtract(lightPosition,rayLocation);
+									Vector rayToLight = (lightPosition - hitLocation);
+									double rayToLightMagnitude = rayToLight.magnitude();
+									rayToLight = rayToLight.normalize();
 
-									cout << "Hit on: "<<rayToLight.position[0] << " "<<rayToLight.position[1] << " "<<rayToLight.position[2] << endl;
+									double shadow_T = -1;
+									double savedShadow_T = -1;
 
-									Vertex normalizedRayToLight = normalize(rayToLight);*/
+									int throwawayVal = 0;
+									double throwAwayArray[3];
 
-									/*if(!checkShadowCollisions(normalizedRayToLight,rayLocation,magnitude(rayToLight)))
+									savedShadow_T = checkTriangleCollision(hitLocation, rayToLight,throwawayVal,throwAwayArray);
+									shadow_T = checkSphereCollision(hitLocation,rayToLight,throwawayVal);
+
+									double epsilon = .0000000000001;
+
+									//Shadow
+									if((savedShadow_T > epsilon && savedShadow_T < rayToLightMagnitude - epsilon) || (shadow_T > epsilon && shadow_T < rayToLightMagnitude - epsilon))
 									{
-										if(sphereWasFound)
-										{
-											redVal = foundSphere.color_diffuse[0];
-											greenVal = foundSphere.color_diffuse[1];
-											blueVal = foundSphere.color_diffuse[2];
-											Vertex sphereLoc;
-											sphereLoc.position[0] = foundSphere.position[0];
-											sphereLoc.position[1] = foundSphere.position[1];
-											sphereLoc.position[2] = foundSphere.position[2];
+										continue;
+									}
 
-											Vertex incomingLightRay = normalize(subtract(zero,rayToLight));
-
-											Vertex sphereNormal = scale(normalize(subtract(rayLocation,sphereLoc)),1.0/foundSphere.radius);
-
-											Vertex reflectedRay = normalize(subtract(scale(sphereNormal, 2 * dot(incomingLightRay,sphereNormal)),incomingLightRay));
-											Vertex toCameraRay = normalize(subtract(zero,rayLocation));
-
-
-											/*redVal += foundSphere.color_diffuse[0]*clamp(dot(normalizedRayToLight,sphereNormal)) + foundSphere.color_specular[0] * pow(dot(reflectedRay,toCameraRay),foundSphere.shininess);
-											greenVal += foundSphere.color_diffuse[1]*clamp(dot(normalizedRayToLight,sphereNormal)) + foundSphere.color_specular[1] * pow(dot(reflectedRay,toCameraRay),foundSphere.shininess);
-											blueVal += foundSphere.color_diffuse[2]*clamp(dot(normalizedRayToLight,sphereNormal)) + foundSphere.color_specular[2] * pow(dot(reflectedRay,toCameraRay),foundSphere.shininess);*/
-										/*}
-										else if(triangleWasFound)
-										{
-											redVal = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
-											greenVal = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
-											blueVal = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
-										}
-									}*/
-
-								}
 
 									if(sphereWasFound)
 									{
@@ -567,11 +546,11 @@ void draw_scene()
 									}
 									else if(triangleWasFound)
 									{
-										cout << savedAlpha << " "<<savedBeta<<" "<<savedGamma<<endl;
-										redVal = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
-										greenVal = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
-										blueVal = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
+											redVal = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
+											greenVal = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
+											blueVal = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
 									}
+								}
 
 								glPointSize(2.0);  
 								glBegin(GL_POINTS);
