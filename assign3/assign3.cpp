@@ -490,6 +490,7 @@ void castRay(int x, int y)
 				double epsilon = .0000000000000001;
 
 				cout <<"TRIANGLE HIT: "<< triangleHit << endl;
+				cout <<"SPHERE HIT: "<< sphereHit << endl;
 
 				if(triangleHit > epsilon && triangleHit < rayToLightMagnitude + epsilon)
 				{
