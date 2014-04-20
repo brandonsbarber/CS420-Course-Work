@@ -31,8 +31,8 @@ int mode=MODE_DISPLAY;
 
 //you may want to make these smaller for debugging purposes
 ///*
-#define WIDTH 160
-#define HEIGHT 120
+#define WIDTH 640
+#define HEIGHT 480
 //*/
 /*
 #define WIDTH 640
@@ -176,38 +176,6 @@ double area(V2 p0, V2 p1, V2 p2)
 	return .5 * ((p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y));
 }
 
-bool checkShadowCollisions(Vertex ray, Vertex rayStart, double maxLength)
-{
-	cout << ray.position[0] << " "<< ray.position[1] << " "<< ray.position[2] << endl;
-
-	//Iterate through spheres
-	for(int sphereIndex = 0;sphereIndex < num_spheres; sphereIndex++)
-	{
-		Sphere sphere = spheres[sphereIndex];
-		float a = 1;
-		float b = 2 * (ray.position[0] * (rayStart.position[0]-sphere.position[0]) + ray.position[1] * (rayStart.position[1]-sphere.position[1]) + ray.position[2] * (rayStart.position[2]-sphere.position[2]));
-		float c = pow(rayStart.position[0] - sphere.position[0],2) + pow(rayStart.position[1] - sphere.position[1],2) + pow(rayStart.position[2] - sphere.position[2],2) - sphere.radius * sphere.radius;
-
-		float discriminant = b * b - 4 * a * c;
-
-		if(discriminant < 0)
-		{
-			continue;
-		}
-		float t_0 = (-b + sqrt(discriminant))/2;
-		float t_1 = (-b - sqrt(discriminant))/2;
-
-		double epsilon = .00000001;
-
-		if(t_0 > 0 || t_1 > 0)
-		{
-			return true;
-		}
-	} 
-
-	return false;
-}
-
 double clamp(double d)
 {
 	if(d < 0)
@@ -274,7 +242,7 @@ double checkTriangleCollision(Vector startingLocation, Vector ray, int& triangle
 	{
 		Triangle triangle = triangles[index];
 
-		Vector* points = new Vector[3];
+		Vector points[3];
 		for(int i = 0; i < 3; i++)
 		{
 			points[i] = vertexToVector(triangle.v[i]);
@@ -304,7 +272,7 @@ double checkTriangleCollision(Vector startingLocation, Vector ray, int& triangle
 		double beta = (points[0] - intersectLocation).cross((points[2] - intersectLocation)).magnitude() * .5 / area;
 		double gamma = (points[0] - intersectLocation).cross((points[1] - intersectLocation)).magnitude() * .5 / area;
 
-		double epsilon = .00001;
+		double epsilon = .0000000001;
 
 		if(alpha >= epsilon && alpha <= 1 && beta >= epsilon && beta <= 1 && gamma >= epsilon && gamma <= 1 && ((alpha + beta + gamma) >= 1-epsilon && (alpha + beta + gamma) <= 1 + epsilon ) && t_Triangle > epsilon)
 		{
@@ -393,7 +361,7 @@ double checkSphereCollision(Vector startingLocation, Vector ray, int& sphereInde
 	return collision_T;
 }
 
-void castRay(int x, int y)
+void castRay(int x, int y, bool debugMode)
 {
 
 	//generate rays
@@ -489,9 +457,12 @@ void castRay(int x, int y)
 
 				double epsilon = .0000000000000001;
 
-				cout <<"TRIANGLE HIT: "<< triangleHit << endl;
-				cout <<"SPHERE HIT: "<< sphereHit << endl;
-
+				if(debugMode)
+				{
+					cout <<"TRIANGLE HIT: "<< triangleHit << endl;
+					cout <<"SPHERE HIT: "<< sphereHit << endl;
+				}
+				
 				if(triangleHit > epsilon && triangleHit < rayToLightMagnitude + epsilon)
 				{
 					if(hitTriangle != triangleIndex && !sphereWasFound || sphereWasFound)
@@ -527,7 +498,7 @@ void castRay(int x, int y)
 					double greenColor = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
 					double blueColor = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
 
-					double shiny = savedAlpha * foundTriangle.v[0].shininess + savedAlpha * foundTriangle.v[1].shininess + savedAlpha * foundTriangle.v[2].shininess;
+					double shiny = savedAlpha * foundTriangle.v[0].shininess + savedBeta * foundTriangle.v[1].shininess + savedGamma * foundTriangle.v[2].shininess;
 
 					Vector pointNormal =  (makeVector(foundTriangle.v[0].normal) * savedAlpha + makeVector(foundTriangle.v[1].normal) * savedBeta + makeVector(foundTriangle.v[2].normal) * savedGamma).normalize();
 					
@@ -552,13 +523,6 @@ void castRay(int x, int y)
 			glPointSize(2.0);  
 			glBegin(GL_POINTS);
 
-			if(x == 80 && y == 60)
-			{
-				cout << redVal << endl;
-				cout << clamp(redVal)<<endl;
-
-			}
-
 			plot_pixel(x,y,clamp(redVal)*255,clamp(greenVal)*255,clamp(blueVal)*255);
 
 			glEnd();
@@ -581,7 +545,7 @@ void draw_scene()
 	{
 		for(int y = 0; y < HEIGHT; y++)
 		{
-			castRay(x,y);
+			castRay(x,y,false);
 		}
 	}
 	printf("Done!\n"); fflush(stdout);
@@ -776,7 +740,7 @@ void idle()
 void mouseButton(int button, int state, int x, int y)
 {
 	cout << "Mouse Click At: " <<x << " "<<(HEIGHT - y) << endl;
-	castRay(x,HEIGHT-y);
+	castRay(x,HEIGHT-y,true);
 	cout << "Shot ray"<<endl;
 }
 

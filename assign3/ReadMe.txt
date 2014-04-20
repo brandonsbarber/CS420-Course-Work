@@ -21,7 +21,7 @@ Feature:                                 Status: finish? (yes/no)
 
 5) Shadows rays                           YES
 
-6) Still images                           !!!no, explain!!!
+6) Still images                           YES
 
 
 Clicking in the window gives you the x and y of the click, along with the calculated shadow ray distances for spheres and triangles, assuming that you click on an object in the scene.
