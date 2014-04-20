@@ -282,7 +282,7 @@ double checkTriangleCollision(Vector startingLocation, Vector ray, int& triangle
 
 		Vector triangleNormal = (points[1] - points[0]).cross((points[2] - points[0])).normalize();
 
-		double t_Denominator = ray.normalize().dot(triangleNormal);
+		double t_Denominator = ray.normalize().dot(triangleNormal.normalize());
 
 		if(t_Denominator == 0)
 		{
@@ -306,7 +306,7 @@ double checkTriangleCollision(Vector startingLocation, Vector ray, int& triangle
 
 		double epsilon = .00001;
 
-		if(alpha >= -epsilon && alpha <= 1 && beta >= -epsilon && beta <= 1 && gamma >= -epsilon && gamma <= 1 && ((alpha + beta + gamma) >= 1-epsilon && (alpha + beta + gamma) <= 1 + epsilon ))
+		if(alpha >= epsilon && alpha <= 1 && beta >= epsilon && beta <= 1 && gamma >= epsilon && gamma <= 1 && ((alpha + beta + gamma) >= 1-epsilon && (alpha + beta + gamma) <= 1 + epsilon ) && t_Triangle > epsilon)
 		{
 			if(collision_T > 0)
 			{
@@ -393,263 +393,197 @@ double checkSphereCollision(Vector startingLocation, Vector ray, int& sphereInde
 	return collision_T;
 }
 
+void castRay(int x, int y)
+{
+
+	//generate rays
+	double ar = 1.0*WIDTH/HEIGHT;
+
+	double tanVal = tan(fov/2.0 * PI / 180.0);
+
+	double rayX = 2.0 * ar * tanVal * x / (1.0*WIDTH) - ar * tanVal;
+	double rayY = 2.0 * tanVal * y / (1.0*HEIGHT) - tanVal;
+	double rayZ = -1;
+	double d = sqrt(rayX * rayX + rayY * rayY + rayZ * rayZ);
+
+	rayX /= d;
+	rayY /= d;
+	rayZ /= d;
+
+	double t = -1;
+
+	Triangle foundTriangle;
+	Sphere foundSphere;
+	bool triangleWasFound = false;
+	bool sphereWasFound = false;
+
+	double savedAlpha,savedBeta,savedGamma;
+
+
+	int triangleIndex = 0;
+	double savedWeight[3];
+
+	t = checkTriangleCollision(makeVector(0,0,0),makeVector(rayX,rayY,rayZ),triangleIndex,savedWeight);
+	if(t >= 0)
+	{
+		triangleWasFound = true;
+		foundTriangle = triangles[triangleIndex];
+		savedAlpha = savedWeight[0];
+		savedBeta = savedWeight[1];
+		savedGamma = savedWeight[2];
+	}
+
+	double saved_T = t;
+
+	int sphereIndex = 0;
+
+	t = checkSphereCollision(makeVector(0,0,0),makeVector(rayX,rayY,rayZ),sphereIndex);
+
+	if(t >= 0)
+	{
+		sphereWasFound = true;
+		foundSphere = spheres[sphereIndex];
+	}
+
+	if((t > saved_T && saved_T >= 0) || t < 0)
+	{
+		t = saved_T;
+	}
+
+	if(t >= 0)
+	{
+			Vector hitLocation = makeVector(rayX,rayY,rayZ) * t;
+
+			double redVal = 0;
+			double greenVal = 0;
+			double blueVal = 0;
+
+			//calc ambient light
+			redVal = ambient_light[0];
+			greenVal = ambient_light[1];
+			blueVal = ambient_light[2];
+
+			//Cast shadow rays
+			for(int lightIndex = 0; lightIndex < num_lights; lightIndex++)
+			{
+				Light light = lights[lightIndex];
+				Vector lightPosition;
+				lightPosition.x = light.position[0];
+				lightPosition.y = light.position[1];
+				lightPosition.z = light.position[2];
+
+				Vector rayToLight = (lightPosition - hitLocation);
+				double rayToLightMagnitude = rayToLight.magnitude();
+				rayToLight = rayToLight.normalize();
+
+				double triangleHit = -1;
+				double sphereHit = -1;
+
+				int hitTriangle = -1;
+				int throwawayVal = 0;
+				double throwAwayArray[3];
+
+				triangleHit = checkTriangleCollision(hitLocation, rayToLight,hitTriangle,throwAwayArray);
+
+				sphereHit = checkSphereCollision(hitLocation,rayToLight,throwawayVal);
+
+				double epsilon = .0000000000000001;
+
+				cout <<"TRIANGLE HIT: "<< triangleHit << endl;
+
+				if(triangleHit > epsilon && triangleHit < rayToLightMagnitude + epsilon)
+				{
+					if(hitTriangle != triangleIndex && !sphereWasFound || sphereWasFound)
+						continue;
+				}
+				if(sphereHit > epsilon && sphereHit < rayToLightMagnitude + epsilon)
+				{
+					continue;
+				}
+
+				if(sphereWasFound)
+				{
+					Vector sphereNormal = ((hitLocation - makeVector(foundSphere.position[0],foundSphere.position[1],foundSphere.position[2])) * (1.0/foundSphere.radius)).normalize();
+
+					Vector toViewer = makeVector(-rayX,-rayY,-rayZ).normalize();
+
+					Vector incoming = rayToLight;
+					Vector perfectReflect = (sphereNormal * (2 * (incoming.normalize().dot(sphereNormal.normalize())))- incoming.normalize()).normalize();
+
+					//Diffuse
+					redVal += foundSphere.color_diffuse[0] * clamp(rayToLight.normalize().dot(sphereNormal.normalize())) * light.color[0];
+					greenVal += foundSphere.color_diffuse[1] * clamp(rayToLight.normalize().dot(sphereNormal.normalize())) * light.color[1];
+					blueVal += foundSphere.color_diffuse[2] * clamp(rayToLight.normalize().dot(sphereNormal.normalize())) * light.color[2];
+
+					//Specular
+					redVal += foundSphere.color_specular[0] * pow(clamp((perfectReflect.dot(toViewer))),foundSphere.shininess) * light.color[0];
+					greenVal += foundSphere.color_specular[1] * pow(clamp((perfectReflect.dot(toViewer))),foundSphere.shininess) * light.color[1];
+					blueVal += foundSphere.color_specular[2] * pow(clamp((perfectReflect.dot(toViewer))),foundSphere.shininess) * light.color[2];
+				}
+				else if(triangleWasFound)
+				{
+					double redColor = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
+					double greenColor = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
+					double blueColor = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
+
+					double shiny = savedAlpha * foundTriangle.v[0].shininess + savedAlpha * foundTriangle.v[1].shininess + savedAlpha * foundTriangle.v[2].shininess;
+
+					Vector pointNormal =  (makeVector(foundTriangle.v[0].normal) * savedAlpha + makeVector(foundTriangle.v[1].normal) * savedBeta + makeVector(foundTriangle.v[2].normal) * savedGamma).normalize();
+					
+					Vector toViewer = (makeVector(0,0,0) - hitLocation).normalize();
+
+					Vector incoming = rayToLight;
+
+					Vector perfectReflect = pointNormal * (2 * incoming.normalize().dot(pointNormal)) - rayToLight.normalize();
+
+					//Diffuse
+					redVal += redColor * clamp(rayToLight.normalize().dot(pointNormal.normalize())) * light.color[0];
+					greenVal += greenColor * clamp(rayToLight.normalize().dot(pointNormal.normalize())) * light.color[1];
+					blueVal += blueColor * clamp(rayToLight.normalize().dot(pointNormal.normalize())) * light.color[2];
+
+					//Specular
+					redVal += redColor * pow(clamp(perfectReflect.dot(toViewer)),shiny) * light.color[0];
+					greenVal += greenColor * pow(clamp(perfectReflect.dot(toViewer)),shiny) * light.color[1];
+					blueVal += blueColor * pow(clamp(perfectReflect.dot(toViewer)),shiny) * light.color[2];
+				}
+			}
+
+			glPointSize(2.0);  
+			glBegin(GL_POINTS);
+
+			if(x == 80 && y == 60)
+			{
+				cout << redVal << endl;
+				cout << clamp(redVal)<<endl;
+
+			}
+
+			plot_pixel(x,y,clamp(redVal)*255,clamp(greenVal)*255,clamp(blueVal)*255);
+
+			glEnd();
+			glFlush();
+	}
+	else
+	{
+			glPointSize(2.0);  
+			glBegin(GL_POINTS);
+			plot_pixel(x,y,255,255,255);
+			glEnd();
+			glFlush();
+	}
+}
+
 //MODIFY THIS FUNCTION
 void draw_scene()
 {
-		//generate rays
-		double ar = 1.0*WIDTH/HEIGHT;
-
-		double tanVal = tan(fov/2.0 * PI / 180.0);
-
-		for(int x = 0; x < WIDTH; x++)
+	for(int x = 0; x < WIDTH; x++)
+	{
+		for(int y = 0; y < HEIGHT; y++)
 		{
-				for(int y = 0; y < HEIGHT; y++)
-				{
-
-					if(x != 80 || y != 60)
-					{
-						//continue;
-					}
-
-						double rayX = 2.0 * ar * tanVal * x / (1.0*WIDTH) - ar * tanVal;
-						double rayY = 2.0 * tanVal * y / (1.0*HEIGHT) - tanVal;
-						double rayZ = -1;
-						double d = sqrt(rayX * rayX + rayY * rayY + rayZ * rayZ);
-
-						rayX /= d;
-						rayY /= d;
-						rayZ /= d;
-
-						double t = -1;
-
-						Triangle foundTriangle;
-						Sphere foundSphere;
-						bool triangleWasFound = false;
-						bool sphereWasFound = false;
-
-						double savedAlpha,savedBeta,savedGamma;
-
-
-						int triangleIndex = 0;
-						double savedWeight[3];
-
-						t = checkTriangleCollision(makeVector(0,0,0),makeVector(rayX,rayY,rayZ),triangleIndex,savedWeight);
-						if(t >= 0)
-						{
-							triangleWasFound = true;
-							foundTriangle = triangles[triangleIndex];
-							savedAlpha = savedWeight[0];
-							savedBeta = savedWeight[1];
-							savedGamma = savedWeight[2];
-						}
-
-						double saved_T = t;
-
-						int sphereIndex = 0;
-
-						t = checkSphereCollision(makeVector(0,0,0),makeVector(rayX,rayY,rayZ),sphereIndex);
-
-						if(t >= 0)
-						{
-							sphereWasFound = true;
-							foundSphere = spheres[sphereIndex];
-						}
-
-						if((t > saved_T && saved_T >= 0) || t < 0)
-						{
-							t = saved_T;
-						}
-
-						if(t >= 0)
-						{
-								Vector hitLocation = makeVector(rayX,rayY,rayZ) * t;
-
-								double redVal = 0;
-								double greenVal = 0;
-								double blueVal = 0;
-
-								//calc ambient light
-								redVal = ambient_light[0];
-								greenVal = ambient_light[1];
-								blueVal = ambient_light[2];
-
-								//Cast shadow rays
-								for(int lightIndex = 0; lightIndex < num_lights; lightIndex++)
-								{
-									Light light = lights[lightIndex];
-									Vector lightPosition;
-									lightPosition.x = light.position[0];
-									lightPosition.y = light.position[1];
-									lightPosition.z = light.position[2];
-
-									Vector rayToLight = (lightPosition - hitLocation);
-									double rayToLightMagnitude = rayToLight.magnitude();
-									rayToLight = rayToLight.normalize();
-
-									double triangleHit = -1;
-									double sphereHit = -1;
-
-									int hitTriangle = -1;
-									int throwawayVal = 0;
-									double throwAwayArray[3];
-
-									triangleHit = checkTriangleCollision(hitLocation, rayToLight,hitTriangle,throwAwayArray);
-
-									sphereHit = checkSphereCollision(hitLocation,rayToLight,throwawayVal);
-
-									double epsilon = .0000000001;
-
-									//Shadow
-									/*if((savedShadow_T > epsilon && savedShadow_T < rayToLightMagnitude - epsilon) || (shadow_T > epsilon && shadow_T < rayToLightMagnitude - epsilon))
-									{
-										
-										continue;
-									}*/
-
-									if(triangleHit > epsilon && triangleHit < rayToLightMagnitude + epsilon)
-									{
-										continue;
-									}
-									if(sphereHit > epsilon && sphereHit < rayToLightMagnitude + epsilon)
-									{
-										continue;
-									}
-
-									if(sphereWasFound)
-									{
-										/*redVal = foundSphere.color_diffuse[0];
-										greenVal = foundSphere.color_diffuse[1];
-										blueVal = foundSphere.color_diffuse[2];*/
-										Vector sphereNormal = ((hitLocation - makeVector(foundSphere.position[0],foundSphere.position[1],foundSphere.position[2])) * (1.0/foundSphere.radius)).normalize();
-
-										Vector toViewer = makeVector(-rayX,-rayY,-rayZ).normalize();
-
-										Vector incoming = rayToLight;
-										Vector perfectReflect = (sphereNormal * (2 * (incoming.normalize().dot(sphereNormal.normalize())))- incoming.normalize()).normalize();
-
-										//Diffuse
-										redVal += foundSphere.color_diffuse[0] * clamp(rayToLight.normalize().dot(sphereNormal.normalize())) * light.color[0];
-										greenVal += foundSphere.color_diffuse[1] * clamp(rayToLight.normalize().dot(sphereNormal.normalize())) * light.color[1];
-										blueVal += foundSphere.color_diffuse[2] * clamp(rayToLight.normalize().dot(sphereNormal.normalize())) * light.color[2];
-
-										//Specular
-										//cout << "PERFECT: ";
-										//perfectReflect.print();
-										//toViewer.print();
-
-										double savedSpecular = perfectReflect.normalize().dot(toViewer.normalize());
-										
-										if(x == 80 && 60 == y)
-										{
-											cout << "To Viewer: ";
-											toViewer.print();
-											cout << "To Light: ";
-											rayToLight.print();
-											cout << "Incoming: ";
-											incoming.print();
-											cout << "Perfect Reflect: ";
-											perfectReflect.print();
-											cout << "Sphere Normal: ";
-											sphereNormal.print();
-											/*cout << "PERFECT REFLECT: ";
-											perfectReflect.print();
-											cout << "INCOMING: ";
-											incoming.normalize().print();
-											cout << "Saved specular"<< savedSpecular << endl;
-											cout << foundSphere.color_specular[0] << " "<<light.color[0]<<endl;
-											cout << foundSphere.shininess<<endl;
-											cout <<"DOT: "<< perfectReflect.dot(toViewer)<<endl;
-											cout <<"DOT 2: "<< perfectReflect.normalize().dot(toViewer.normalize())<<endl;*/
-											cout << "RED: "<<redVal << endl;
-											cout << "Adding: "<<foundSphere.color_specular[0] * pow(clamp((perfectReflect.dot(toViewer))),foundSphere.shininess) * light.color[0]<<endl;
-										}
-
-										//cout <<"DOT: "<< perfectReflect.normalize().dot(toViewer.normalize())<<endl;
-										redVal += foundSphere.color_specular[0] * pow(clamp((perfectReflect.dot(toViewer))),foundSphere.shininess) * light.color[0];
-										greenVal += foundSphere.color_specular[1] * pow(clamp((perfectReflect.dot(toViewer))),foundSphere.shininess) * light.color[1];
-										blueVal += foundSphere.color_specular[2] * pow(clamp((perfectReflect.dot(toViewer))),foundSphere.shininess) * light.color[2];
-									}
-									else if(triangleWasFound)
-									{
-										/*
-										redVal = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
-										greenVal = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
-										blueVal = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
-										*/
-										double redColor = (savedAlpha * foundTriangle.v[0].color_diffuse[0] + savedBeta * foundTriangle.v[1].color_diffuse[0] + savedGamma * foundTriangle.v[2].color_diffuse[0]);
-										double greenColor = (savedAlpha * foundTriangle.v[0].color_diffuse[1] + savedBeta * foundTriangle.v[1].color_diffuse[1] + savedGamma * foundTriangle.v[2].color_diffuse[1]);
-										double blueColor = (savedAlpha * foundTriangle.v[0].color_diffuse[2] + savedBeta * foundTriangle.v[1].color_diffuse[2] + savedGamma * foundTriangle.v[2].color_diffuse[2]);
-
-										double shiny = savedAlpha * foundTriangle.v[0].shininess + savedAlpha * foundTriangle.v[1].shininess + savedAlpha * foundTriangle.v[2].shininess;
-
-										Vector pointNormal =  (makeVector(foundTriangle.v[0].normal) * savedAlpha + makeVector(foundTriangle.v[1].normal) * savedBeta + makeVector(foundTriangle.v[2].normal) * savedGamma).normalize();
-										
-										Vector toViewer = (makeVector(0,0,0) - hitLocation).normalize();
-
-										Vector incoming = rayToLight;
-
-										Vector perfectReflect = pointNormal * (2 * incoming.normalize().dot(pointNormal)) - rayToLight.normalize();
-
-										//Diffuse
-										redVal += redColor * clamp(rayToLight.normalize().dot(pointNormal.normalize())) * light.color[0];
-										greenVal += greenColor * clamp(rayToLight.normalize().dot(pointNormal.normalize())) * light.color[1];
-										blueVal += blueColor * clamp(rayToLight.normalize().dot(pointNormal.normalize())) * light.color[2];
-
-										//Specular
-										redVal += redColor * pow(clamp(perfectReflect.dot(toViewer)),shiny) * light.color[0];
-										greenVal += greenColor * pow(clamp(perfectReflect.dot(toViewer)),shiny) * light.color[1];
-										blueVal += blueColor * pow(clamp(perfectReflect.dot(toViewer)),shiny) * light.color[2];
-										
-										/*
-										if(x == 80 && y == 75)
-										{
-											cout << "HELLO"<<endl;
-											cout << "CALCULATING BLUE: "<<blueColor * clamp(rayToLight.normalize().dot(pointNormal.normalize())) * light.color[2] << endl;
-											cout <<"ABG: "<< savedAlpha << " "<<savedBeta<<" "<<savedGamma<<endl;
-											cout <<"RGB: "<< redColor << " "<<greenColor<<" "<<blueColor<<endl;
-											cout << "VALS: "<<redVal << " "<<greenVal<<" "<<blueVal<<endl;
-											cout << "Hit Location: ";
-											hitLocation.print();
-											cout << "Light Position: ";
-											lightPosition.print();
-											(lightPosition - hitLocation).normalize().print();
-											cout << "Ray to Light: ";
-											rayToLight.print();
-											cout << "Point Normal: ";
-											pointNormal.print();
-											cout << rayToLight.dot(pointNormal)<<endl;
-											cout << rayToLight.normalize().dot(pointNormal.normalize()) << endl;
-										}
-										*/
-									}
-								}
-
-								glPointSize(2.0);  
-								glBegin(GL_POINTS);
-
-								if(x == 80 && y == 60)
-								{
-									cout << redVal << endl;
-									cout << clamp(redVal)<<endl;
-
-								}
-
-								plot_pixel(x,y,clamp(redVal)*255,clamp(greenVal)*255,clamp(blueVal)*255);
-
-								glEnd();
-								glFlush();
-						}
-						else
-						{
-								glPointSize(2.0);  
-								glBegin(GL_POINTS);
-								plot_pixel(x,y,255,255,255);
-								glEnd();
-								glFlush();
-						}
-				}	//end y
-		}	//end x
-		printf("Done!\n"); fflush(stdout);
+			castRay(x,y);
+		}
+	}
+	printf("Done!\n"); fflush(stdout);
 }
 
 void plot_pixel_display(int x,int y,unsigned char r,unsigned char g,unsigned char b)
@@ -838,6 +772,13 @@ void idle()
 	once=1;
 }
 
+void mouseButton(int button, int state, int x, int y)
+{
+	cout << "Mouse Click At: " <<x << " "<<(HEIGHT - y) << endl;
+	castRay(x,HEIGHT-y);
+	cout << "Shot ray"<<endl;
+}
+
 int main (int argc, char ** argv)
 {
 	if (argc<2 || argc > 3)
@@ -862,6 +803,7 @@ int main (int argc, char ** argv)
 	int window = glutCreateWindow("Ray Tracer");
 	glutDisplayFunc(display);
 	glutIdleFunc(idle);
+	glutMouseFunc(mouseButton);
 	init();
 	glutMainLoop();
 }

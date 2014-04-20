@@ -19,6 +19,6 @@ Feature:                                 Status: finish? (yes/no)
 
 4) Sphere Phong Shading                   YES
 
-5) Shadows rays                           !!!no, explain!!!
+5) Shadows rays                           YES
 
 6) Still images                           !!!no, explain!!!
