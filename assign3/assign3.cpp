@@ -1,5 +1,5 @@
 /*
-CSCI 480
+CSCI 420
 Assignment 3 Raytracer
 
 Name: Brandon Barber
