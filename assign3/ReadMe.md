@@ -3,11 +3,18 @@ Assignment #3: Ray tracing
 FULL NAME: Brandon Barber
 
 
+##Compilation:##
+`make`
+
+The compiled `pic` library must be one directory level above this. For instance, if your directory path for this is `Code/assign3`, then you must have it in `Code/pic`.
+
+##Running##
+
+```./directoryName pathToSceneFile.scene outputImagePath.jpg```
+
+
 MANDATORY FEATURES
 ------------------
-
-<Under "Status" please indicate whether it has been implemented and is
-functioning correctly.  If not, please explain the current status.>
 
 Feature:                                 Status: finish? (yes/no)
 -------------------------------------    -------------------------
